@@ -1,0 +1,34 @@
+name: disruptor
+version: 0.0.0
+synopsis: LMAX Disruptor in Haskell
+description: LMAX Disruptor in Haskell
+homepage: https://github.com/maoe/hs-disruptor.git
+license: BSD3
+license-file: LICENSE
+author: Mitsutoshi Aoe
+maintainer: Mitsutoshi Aoe <maoe@foldr.in>
+copyright: Copyright (C) 2014 Mitsutoshi Aoe
+category: Control
+build-type: Simple
+cabal-version: >= 1.10
+
+library
+  exposed-modules:
+    Control.Concurrent.Disruptor
+  build-depends:
+    base >= 4.6 && < 4.8
+  hs-source-dirs: src
+  default-language: Haskell2010
+  ghc-options: -Wall
+
+benchmark ping-pong-latency
+  type: exitcode-stdio-1.0
+  hs-source-dirs: benchmarks
+  main-is: ping-pong-latency.hs
+  ghc-options: -Wall -threaded
+  build-depends:
+      base
+    , async
+    , criterion
+    , stm
+  default-language: Haskell2010
