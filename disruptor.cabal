@@ -27,8 +27,9 @@ benchmark ping-pong-latency
   main-is: ping-pong-latency.hs
   ghc-options: -Wall -threaded
   build-depends:
-      base
-    , async
-    , criterion
-    , stm
+      base >= 4.6 && < 4.8
+    , async == 2.0.*
+    , criterion == 1.0.*
+    , deepseq == 1.3.*
+    , stm == 2.4.*
   default-language: Haskell2010
