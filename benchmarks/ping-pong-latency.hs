@@ -5,10 +5,11 @@ import Control.Concurrent.Chan
 import Control.Concurrent.STM
 import Control.Monad
 
-import Control.DeepSeq (NFData(..))
-
-import Criterion.Main
 import Control.Concurrent.Async
+import Control.DeepSeq (NFData(..))
+import Criterion.Main
+import qualified Control.Concurrent.Chan.Unagi as U
+import qualified Control.Concurrent.Chan.Unagi.Unboxed as UU
 
 iterations :: Int
 iterations = 100
@@ -23,6 +24,10 @@ main = defaultMain
       bench "TQueue" $ whnfIO $ benchmarkTQueue pingQ pongQ
   , env setupTBQueue $ \ ~(pingQ, pongQ) ->
       bench "TBQueue" $ whnfIO $ benchmarkTBQueue pingQ pongQ
+  , env setupUnagi $ \ ~(pingQ, pongQ) ->
+      bench "Unagi" $ whnfIO $ benchmarkUnagi pingQ pongQ
+  , env setupUnagiUnboxed $ \ ~(pingQ, pongQ) ->
+      bench "Unagi Unboxed" $ whnfIO $ benchmarkUnagiUnboxed pingQ pongQ
   ]
 
 -------------------------------------------------
@@ -146,8 +151,80 @@ pongerTBQueue pingQ pongQ = forever $
   atomically (readTBQueue pingQ) >>= atomically . writeTBQueue pongQ
 
 -------------------------------------------------
+-- Unagi
+
+setupUnagi
+  :: IO ((U.InChan Int, U.OutChan Int), (U.InChan Int, U.OutChan Int))
+setupUnagi = (,) <$> U.newChan <*> U.newChan
+
+benchmarkUnagi
+  :: (U.InChan Int, U.OutChan Int)
+  -> (U.InChan Int, U.OutChan Int)
+  -> IO ()
+benchmarkUnagi (pingInQ, pingOutQ) (pongInQ, pongOutQ) =
+  withAsync (pongerUnagi pingOutQ pongInQ) $ \_ ->
+    pingerUnagi pingInQ pongOutQ iterations
+
+pingerUnagi
+  :: U.InChan Int
+  -> U.OutChan Int
+  -> Int
+  -> IO ()
+pingerUnagi pingQ pongQ = loop
+  where
+    loop n = when (n > 0) $ do
+      U.writeChan pingQ n
+      !_ <- U.readChan pongQ
+      loop $ n - 1
+
+pongerUnagi
+  :: U.OutChan Int
+  -> U.InChan Int
+  -> IO ()
+pongerUnagi pingQ pongQ = forever $
+  U.readChan pingQ >>= U.writeChan pongQ
+
+-------------------------------------------------
+-- Unagi Unboxed
+
+setupUnagiUnboxed
+  :: IO ((UU.InChan Int, UU.OutChan Int), (UU.InChan Int, UU.OutChan Int))
+setupUnagiUnboxed = (,) <$> UU.newChan <*> UU.newChan
+
+benchmarkUnagiUnboxed
+  :: (UU.InChan Int, UU.OutChan Int)
+  -> (UU.InChan Int, UU.OutChan Int)
+  -> IO ()
+benchmarkUnagiUnboxed (pingInQ, pingOutQ) (pongInQ, pongOutQ) =
+  withAsync (pongerUnagiUnboxed pingOutQ pongInQ) $ \_ ->
+    pingerUnagiUnboxed pingInQ pongOutQ iterations
+
+pingerUnagiUnboxed
+  :: UU.InChan Int
+  -> UU.OutChan Int
+  -> Int
+  -> IO ()
+pingerUnagiUnboxed pingQ pongQ = loop
+  where
+    loop n = when (n > 0) $ do
+      UU.writeChan pingQ n
+      !_ <- UU.readChan pongQ
+      loop $ n - 1
+
+pongerUnagiUnboxed
+  :: UU.OutChan Int
+  -> UU.InChan Int
+  -> IO ()
+pongerUnagiUnboxed pingQ pongQ = forever $
+  UU.readChan pingQ >>= UU.writeChan pongQ
+
+-------------------------------------------------
 
 instance NFData (Chan a)
 instance NFData (TChan a)
 instance NFData (TQueue a)
 instance NFData (TBQueue a)
+instance NFData (U.InChan a)
+instance NFData (U.OutChan a)
+instance NFData (UU.InChan a)
+instance NFData (UU.OutChan a)
