@@ -38,7 +38,7 @@ setupChan = (,) <$> newChan <*> newChan
 
 benchmarkChan :: Chan Int -> Chan Int -> IO ()
 benchmarkChan pingQ pongQ =
-  withAsync (pongerChan pingQ pongQ) $ \_ ->
+  withAsync (pongerChan pingQ pongQ iterations) $ \_ ->
     pingerChan pingQ pongQ iterations
 
 pingerChan
@@ -56,9 +56,13 @@ pingerChan pingQ pongQ = loop
 pongerChan
   :: Chan Int -- ^ Ping queue
   -> Chan Int -- ^ Pong queue
+  -> Int
   -> IO ()
-pongerChan pingQ pongQ = forever $
-  readChan pingQ >>= writeChan pongQ
+pongerChan pingQ pongQ = loop
+  where
+    loop n = when (n > 0) $ do
+      readChan pingQ >>= writeChan pongQ
+      loop $ n - 1
 
 -------------------------------------------------
 -- TChan
@@ -68,7 +72,7 @@ setupTChan = atomically $ (,) <$> newTChan <*> newTChan
 
 benchmarkTChan :: TChan Int -> TChan Int -> IO ()
 benchmarkTChan pingQ pongQ =
-  withAsync (pongerTChan pingQ pongQ) $ \_ ->
+  withAsync (pongerTChan pingQ pongQ iterations) $ \_ ->
     pingerTChan pingQ pongQ iterations
 
 pingerTChan
@@ -86,9 +90,13 @@ pingerTChan pingQ pongQ = loop
 pongerTChan
   :: TChan Int -- ^ Ping queue
   -> TChan Int -- ^ Pong queue
+  -> Int
   -> IO ()
-pongerTChan pingQ pongQ = forever $
-  atomically (readTChan pingQ) >>= atomically . writeTChan pongQ
+pongerTChan pingQ pongQ = loop
+  where
+    loop n = when (n > 0) $ do
+      atomically (readTChan pingQ) >>= atomically . writeTChan pongQ
+      loop $ n - 1
 
 -------------------------------------------------
 -- TQueue
@@ -98,7 +106,7 @@ setupTQueue = atomically $ (,) <$> newTQueue <*> newTQueue
 
 benchmarkTQueue :: TQueue Int -> TQueue Int -> IO ()
 benchmarkTQueue pingQ pongQ =
-  withAsync (pongerTQueue pingQ pongQ) $ \_ ->
+  withAsync (pongerTQueue pingQ pongQ iterations) $ \_ ->
     pingerTQueue pingQ pongQ iterations
 
 pingerTQueue
@@ -116,9 +124,13 @@ pingerTQueue pingQ pongQ = loop
 pongerTQueue
   :: TQueue Int -- ^ Ping queue
   -> TQueue Int -- ^ Pong queue
+  -> Int
   -> IO ()
-pongerTQueue pingQ pongQ = forever $
-  atomically (readTQueue pingQ) >>= atomically . writeTQueue pongQ
+pongerTQueue pingQ pongQ = loop
+  where
+    loop n = when (n > 0) $ do
+      atomically (readTQueue pingQ) >>= atomically . writeTQueue pongQ
+      loop $ n - 1
 
 -------------------------------------------------
 -- TBQueue
@@ -128,7 +140,7 @@ setupTBQueue = atomically $ (,) <$> newTBQueue 1024 <*> newTBQueue 1024
 
 benchmarkTBQueue :: TBQueue Int -> TBQueue Int -> IO ()
 benchmarkTBQueue pingQ pongQ =
-  withAsync (pongerTBQueue pingQ pongQ) $ \_ ->
+  withAsync (pongerTBQueue pingQ pongQ iterations) $ \_ ->
     pingerTBQueue pingQ pongQ iterations
 
 pingerTBQueue
@@ -146,9 +158,13 @@ pingerTBQueue pingQ pongQ = loop
 pongerTBQueue
   :: TBQueue Int -- ^ Ping queue
   -> TBQueue Int -- ^ Pong queue
+  -> Int
   -> IO ()
-pongerTBQueue pingQ pongQ = forever $
-  atomically (readTBQueue pingQ) >>= atomically . writeTBQueue pongQ
+pongerTBQueue pingQ pongQ = loop
+  where
+    loop n = when (n > 0) $ do
+      atomically (readTBQueue pingQ) >>= atomically . writeTBQueue pongQ
+      loop $ n - 1
 
 -------------------------------------------------
 -- Unagi
@@ -161,10 +177,9 @@ benchmarkUnagi
   :: (U.InChan Int, U.OutChan Int)
   -> (U.InChan Int, U.OutChan Int)
   -> IO ()
-benchmarkUnagi (pingInQ, pingOutQ) (pongInQ, pongOutQ) = do
-  withAsync (pongerUnagi pingOutQ pongInQ) $ \_ ->
+benchmarkUnagi (pingInQ, pingOutQ) (pongInQ, pongOutQ) =
+  withAsync (pongerUnagi pingOutQ pongInQ iterations) $ \_ ->
     pingerUnagi pingInQ pongOutQ iterations
-  U.writeChan pongInQ 0 -- workaround to avoid deadlock
 
 pingerUnagi
   :: U.InChan Int
@@ -181,9 +196,13 @@ pingerUnagi pingQ pongQ = loop
 pongerUnagi
   :: U.OutChan Int
   -> U.InChan Int
+  -> Int
   -> IO ()
-pongerUnagi pingQ pongQ = forever $
-  U.readChan pingQ >>= U.writeChan pongQ
+pongerUnagi pingQ pongQ = loop
+  where
+    loop n = when (n > 0) $ do
+      U.readChan pingQ >>= U.writeChan pongQ
+      loop $ n - 1
 
 -------------------------------------------------
 -- Unagi Unboxed
@@ -197,9 +216,8 @@ benchmarkUnagiUnboxed
   -> (UU.InChan Int, UU.OutChan Int)
   -> IO ()
 benchmarkUnagiUnboxed (pingInQ, pingOutQ) (pongInQ, pongOutQ) = do
-  withAsync (pongerUnagiUnboxed pingOutQ pongInQ) $ \_ ->
+  withAsync (pongerUnagiUnboxed pingOutQ pongInQ iterations) $ \_ ->
     pingerUnagiUnboxed pingInQ pongOutQ iterations
-  UU.writeChan pongInQ 0 -- workaround to avoid deadlock
 
 pingerUnagiUnboxed
   :: UU.InChan Int
@@ -216,9 +234,13 @@ pingerUnagiUnboxed pingQ pongQ = loop
 pongerUnagiUnboxed
   :: UU.OutChan Int
   -> UU.InChan Int
+  -> Int
   -> IO ()
-pongerUnagiUnboxed pingQ pongQ = forever $
-  UU.readChan pingQ >>= UU.writeChan pongQ
+pongerUnagiUnboxed pingQ pongQ = loop
+  where
+    loop n = when (n > 0) $ do
+      UU.readChan pingQ >>= UU.writeChan pongQ
+      loop $ n - 1
 
 -------------------------------------------------
 
