@@ -161,9 +161,10 @@ benchmarkUnagi
   :: (U.InChan Int, U.OutChan Int)
   -> (U.InChan Int, U.OutChan Int)
   -> IO ()
-benchmarkUnagi (pingInQ, pingOutQ) (pongInQ, pongOutQ) =
+benchmarkUnagi (pingInQ, pingOutQ) (pongInQ, pongOutQ) = do
   withAsync (pongerUnagi pingOutQ pongInQ) $ \_ ->
     pingerUnagi pingInQ pongOutQ iterations
+  U.writeChan pongInQ 0 -- workaround to avoid deadlock
 
 pingerUnagi
   :: U.InChan Int
@@ -195,9 +196,10 @@ benchmarkUnagiUnboxed
   :: (UU.InChan Int, UU.OutChan Int)
   -> (UU.InChan Int, UU.OutChan Int)
   -> IO ()
-benchmarkUnagiUnboxed (pingInQ, pingOutQ) (pongInQ, pongOutQ) =
+benchmarkUnagiUnboxed (pingInQ, pingOutQ) (pongInQ, pongOutQ) = do
   withAsync (pongerUnagiUnboxed pingOutQ pongInQ) $ \_ ->
     pingerUnagiUnboxed pingInQ pongOutQ iterations
+  UU.writeChan pongInQ 0 -- workaround to avoid deadlock
 
 pingerUnagiUnboxed
   :: UU.InChan Int
